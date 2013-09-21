@@ -41,7 +41,8 @@ void *m61_malloc(size_t sz, const char *file, int line) {
     (void) file, (void) line;   // avoid uninitialized variable warnings
     
     /* check if allocation failed */
-    metadata *new = malloc(sz + sizeof(metadata));
+    char *new = malloc(sz + sizeof(metadata));
+    metadata *newMeta = (metadata *)new;
     
     if (new == NULL)
     {
@@ -58,9 +59,9 @@ void *m61_malloc(size_t sz, const char *file, int line) {
     else
     {
         /* store pointer size */
-      new->size = sz;
-      new->next = NULL;
-            
+        newMeta->size = sz;
+        newMeta->next = NULL;
+        
         /* update number of memory allocations */
         num_malloc++;
             
@@ -74,8 +75,8 @@ void *m61_malloc(size_t sz, const char *file, int line) {
             current = current->next;
         }
         
-        current->next = new;
-        new->prev = current;
+        current->next = newMeta;
+        newMeta->prev = current;
      
         return (void*) (new + sizeof(metadata)); 
     }
@@ -84,7 +85,7 @@ void *m61_malloc(size_t sz, const char *file, int line) {
 void m61_free(void *ptr, const char *file, int line) {
     (void) file, (void) line;   // avoid uninitialized variable warnings
     
-    metadata* new = ptr - 144;
+    char* new = ptr - sizeof(metadata);
     
     // traverse the linked metadata list looking for memory address
     for (metadata* current = &head; current->next != NULL; current = current->next)

@@ -13,8 +13,7 @@ hhtest.o: hhtest.c m61.h /usr/include/stdlib.h \
   /usr/include/libkern/_OSByteOrder.h \
   /usr/include/libkern/i386/_OSByteOrder.h /usr/include/alloca.h \
   /usr/include/machine/types.h /usr/include/i386/types.h \
-  /usr/include/i386/_types.h /usr/include/math.h \
-  /usr/include/architecture/i386/math.h /usr/include/string.h \
+  /usr/include/i386/_types.h /usr/include/math.h /usr/include/string.h \
   /usr/include/strings.h /usr/include/secure/_string.h \
   /usr/include/secure/_common.h /usr/include/stdio.h \
   /usr/include/secure/_stdio.h
@@ -80,8 +79,6 @@ m61.h:
 /usr/include/i386/_types.h:
 
 /usr/include/math.h:
-
-/usr/include/architecture/i386/math.h:
 
 /usr/include/string.h:
 
