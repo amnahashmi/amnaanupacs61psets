@@ -4,14 +4,18 @@
 #include <string.h>
 #include <stdio.h>
 #include <inttypes.h>
+#include <stdint.h>
+#include <limits.h>
 
-/* metadata struct
+/* metadata struct */
 typedef struct metadata
 {
-    int byte;
-    void *payload
-} */
-
+    size_t size;
+    struct metadata* next;
+    struct metadata* prev;
+}
+metadata;
+    
 /* counter for total number of memory allocations */
 int num_malloc = 0;
 
@@ -30,46 +34,75 @@ int byte_freed = 0;
 /* counter for bytes failed */
 int byte_failed = 0;
 
+/* initialize first element of metadata linked list */
+struct metadata head = {.size = 0, .next = NULL, .prev = NULL};
+
 void *m61_malloc(size_t sz, const char *file, int line) {
     (void) file, (void) line;   // avoid uninitialized variable warnings
     
-    /* metadata cursor; */
-    
     /* check if allocation failed */
-    int *cursor = malloc(sz + sizeof(int));
-    /* cursor->payload = malloc(sz); */
+    metadata *new = malloc(sz + sizeof(metadata));
     
-    if (cursor /*cursor->paylaod */ == NULL)
-        {
+    if (new == NULL)
+    {
             num_failed++;
-            byte_failed = byte_failed + sz;
+            byte_failed = byte_failed + (int) sz;
             return NULL;
-        }
+    }
+    else if (sz > INT_MAX)
+    {
+       num_failed++;
+       byte_failed = sz;
+       return NULL;
+    }
     else
-        { 
-            /* store pointer size */
-            /*cursor->size = (int) sz; */
-            *cursor = (int) sz; 
-          
-            /* update number of memory allocations */
-            num_malloc++;
+    {
+        /* store pointer size */
+      new->size = sz;
+      new->next = NULL;
             
-            /* update bytes of memory allocations */
-            byte_malloc = byte_malloc + (int) sz;
-     
-            return (void*) cursor + (int) sizeof(int);
+        /* update number of memory allocations */
+        num_malloc++;
+            
+        /* update bytes of memory allocations */ /*Do we include bytes of metadata?*/
+        byte_malloc = byte_malloc + (int) sz;
+            
+        /* update metadata linked list */
+        metadata* current = &head;
+        
+        while (current->next != NULL) {
+            current = current->next;
         }
+        
+        current->next = new;
+        new->prev = current;
+     
+        return (void*) (new + sizeof(metadata)); 
+    }
 }
+
 void m61_free(void *ptr, const char *file, int line) {
     (void) file, (void) line;   // avoid uninitialized variable warnings
     
-    /* update number of freed allocation */
-    num_freed++;
+    metadata* new = ptr - 144;
     
-    /* update bytes of free's */
-    byte_freed = byte_freed + (ptr - (int) sizeof(int)); 
-    
-    free(ptr);
+    // traverse the linked metadata list looking for memory address
+    for (metadata* current = &head; current->next != NULL; current = current->next)
+    {
+          if (new == current)
+          {
+          
+            /* update bytes of free's */
+            byte_freed = byte_freed + (long long) current->size;
+            num_freed++;
+            
+            /* remove in linked list */
+             current->prev->next = current->next;
+             current->next->prev = current->prev;
+             
+            free(new);
+          }
+       }
 }
 
 void *m61_realloc(void *ptr, size_t sz, const char *file, int line) {
@@ -79,9 +112,20 @@ void *m61_realloc(void *ptr, size_t sz, const char *file, int line) {
     // Oops! In order to copy the data from `ptr` into `new_ptr`, we need
     // to know how much data there was in `ptr`. That requires work.
     // Your code here (to fix test008).
+   
+    if (ptr != NULL && new_ptr != NULL) 
+     {
+         metadata* cursor = ptr - sizeof(metadata);
+         size_t old_sz = (size_t) cursor->size;
+         if (old_sz < sz)
+             memcpy(new_ptr, ptr, old_sz);
+         else
+             memcpy(new_ptr, ptr, sz);
+     }
+     
     m61_free(ptr, file, line);
     return new_ptr;
-}
+} 
 
 void *m61_calloc(size_t nmemb, size_t sz, const char *file, int line) {
     // Your code here (to fix test010).
@@ -95,14 +139,12 @@ void m61_getstatistics(struct m61_statistics *stats) {
     // Stub: set all statistics to enormous numbers
     memset(stats, 255, sizeof(struct m61_statistics));
     
-    return struct stats {
-        unsigned long long nactive = num_malloc - num_freed;
-        unsigned long long active_size = byte_malloc - byte_freed;
-        unsigned long long ntotal = num_malloc;
-        unsigned long long total_size = byte_malloc;
-        unsigned long long nfail = num_failed;
-        unsigned long long fail_size = byte_failed;
-    };
+    stats->nactive = num_malloc - num_freed;
+    stats->active_size = byte_malloc - byte_freed;
+    stats->ntotal = num_malloc;
+    stats->total_size = byte_malloc;
+    stats->nfail = num_failed;
+    stats->fail_size = byte_failed;
 }
 
 void m61_printstatistics(void) {
