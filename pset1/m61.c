@@ -110,16 +110,15 @@ void *m61_realloc(void *ptr, size_t sz, const char *file, int line) {
     void *new_ptr = NULL;
     if (sz)
         new_ptr = m61_malloc(sz, file, line);
-    // Oops! In order to copy the data from `ptr` into `new_ptr`, we need
-    // to know how much data there was in `ptr`. That requires work.
-    // Your code here (to fix test008).
    
     if (ptr != NULL && new_ptr != NULL) 
      {
-         metadata* cursor = ptr - sizeof(metadata);
-         size_t old_sz = (size_t) cursor->size;
-         if (old_sz < sz)
+         char* currPointer = ptr - sizeof(metadata);
+         metadata* cursor = (metadata *)currPointer;
+         size_t old_sz = cursor->size;
+         if (old_sz < sz) {
              memcpy(new_ptr, ptr, old_sz);
+         }
          else
              memcpy(new_ptr, ptr, sz);
      }
