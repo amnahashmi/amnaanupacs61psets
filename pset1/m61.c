@@ -86,9 +86,10 @@ void m61_free(void *ptr, const char *file, int line) {
     (void) file, (void) line;   // avoid uninitialized variable warnings
     
     char* new = ptr - sizeof(metadata);
+    metadata *newMeta = (metadata *)new;
     
     // traverse the linked metadata list looking for memory address
-    for (metadata* current = &head; current->next != NULL; current = current->next)
+    for (metadata* current = &head; current!= NULL; current = current->next)
     {
           if (new == current)
           {
@@ -99,7 +100,8 @@ void m61_free(void *ptr, const char *file, int line) {
             
             /* remove in linked list */
              current->prev->next = current->next;
-             current->next->prev = current->prev;
+            if (current->next)
+                current->next->prev = current->prev;
              
             free(new);
           }
