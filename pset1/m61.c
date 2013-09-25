@@ -13,6 +13,8 @@ typedef struct metadata
     size_t size;
     struct metadata* next;
     struct metadata* prev;
+    char* file;
+    int line;
     int extraSpace;
 }
 metadata;
@@ -91,13 +93,16 @@ void *m61_malloc(size_t sz, const char *file, int line) {
             current->next = newMeta;
             newMeta->prev = current;
             
+            newMeta->line = line;
+            newMeta->file = file;
+            
             /* Storing a special character at boundary so we can protect against boundary write errors */
             new[sz + sizeof(metadata)] = boundary_value;
             
             
             /* Check that upper boundary of memory location is larger than current largest,
-            ** and if so update the current largest
-            **/
+             ** and if so update the current largest
+             **/
             if ((uintptr_t)(new + sz + sizeof(metadata)) > highest_ptr)
                 highest_ptr = (uintptr_t) (new + sz + sizeof(metadata));
             
@@ -120,7 +125,6 @@ void m61_free(void *ptr, const char *file, int line) {
         {
             if (new == current)
             {
-                
                 /* update bytes of free's */
                 byte_freed = byte_freed + (int) current->size;
                 num_freed++;
@@ -143,13 +147,26 @@ void m61_free(void *ptr, const char *file, int line) {
         
         if (ptr < &head || ptr > highest_ptr)
         {
+            
             printf("MEMORY BUG: %s:%d: invalid free of pointer %p, not in heap", file, line, ptr);
             abort();
         }
         
         else
         {
-            printf("MEMORY BUG: %s:%d: invalid free of pointer %p, not allocated", file, line, ptr);
+            printf("MEMORY BUG: %s:%d: invalid free of pointer %p, not allocated\n", file, line, ptr);
+            for (current = &head; current != NULL; current = current->next)
+            {
+                char* payload = (char*) current + sizeof(metadata);
+                if (ptr > current)
+                {
+                    if ((size_t)((char *)ptr - (char *)payload) < current->size)
+                    {
+                        printf("  %s:%d: %p is %d bytes inside a %d byte region allocated here", current->file, current->line, ptr, (int) ((char *)ptr - (char *)payload), (int) current->size);
+                        abort();
+                    }
+                }
+            }
             abort();
         }
     }
@@ -214,6 +231,13 @@ void m61_printstatistics(void) {
            stats.active_size, stats.total_size, stats.fail_size);
 }
 
+/* If there is something in the list still, then we haven't freed everything */
 void m61_printleakreport(void) {
-    // Your code here.
+    metadata *current;
+    
+    for (current = (&head)->next; current!=NULL; current = current->next)
+    {
+        printf("LEAK CHECK: %s:%d: allocated object %p with size %zu\n", current->file, current->line,
+               ((char *)current+sizeof(metadata)), current->size);
+    }
 }
